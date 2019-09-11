@@ -1,9 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 import json
-from io import BytesIO
-import base64
-from PIL import Image
 from os import path, system
 
 class Startpage:
@@ -235,6 +232,7 @@ class Pokemon:
 			for t in self.dex.typeEffectiveness(item['type']['name'])['double_damage_from']:
 				res.append(t)
 		return res		
+
 class Wiki:
 	def __init__(self):
 		self.wikidata = "https://www.wikidata.org/w/api.php?"
