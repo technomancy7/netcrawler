@@ -38,7 +38,7 @@ wiki = Wiki()
 description = wiki.identify('python')
 #shows a description of an entity
 
-summaries = wiki.summarieze('python')
+summaries = wiki.summarize('python')
 #shows a summary of topics from wikimedias OpenSearch API
 
 pages = wiki.query('python')
