@@ -78,10 +78,11 @@ class Startpage:
 		self.useragent = useragent
 		self.cache = {}
 		
-	def get(self, search_term):
-		res = requests.get(f"https://www.startpage.com/do/search?lui=english&language=english&cat=web&query={urllib.parse.quote(search_term)}&nj=&anticache=316666").text
-		data = json.loads(res)
-		return data
+	def basic(self, search_term):
+		return self.search(search_term)[0]['description']
+	
+	def basicURL(self, search_term):
+		return self.search(search_term)[0]['url']
 	
 	def search(self, search_term):
 		if self.cache.get(search_term.lower(), None):
@@ -367,7 +368,13 @@ class DuckDuckGo:
 		res = requests.get(f"https://api.duckduckgo.com/?q={search_term}&no_redirect=1&format=json&pretty=1&t=Python-library").text
 		data = json.loads(res)
 		return data
-		
+	
+	def basic(self, search_term):
+		return self.search(search_term)[0]['description']
+	
+	def basicURL(self, search_term):
+		return self.search(search_term)[0]['url']
+	
 	def search(self, search_term):
 		if self.cache.get(search_term.lower(), None):
 			#print("Getting cached version.")
