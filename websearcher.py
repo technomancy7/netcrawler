@@ -78,7 +78,7 @@ class Startpage:
 	
 	def search(self, search_term):
 		if self.cache.get(search_term.lower(), None):
-			print("Getting cached version.")
+			#print("Getting cached version.")
 			return self.cache[search_term.lower()]
 		payload = {
 		'User-Agent':self.useragent
@@ -110,13 +110,13 @@ class Startpage:
 			bundle_url = final_data['urls'][i]
 			bundle_desc = final_data['descriptions'][i]
 			bundle_title = final_data['titles'][i]
-			print(f"TITLE: {bundle_title}")
-			print(f"INFO: {bundle_desc}")
-			print(f"URL: {bundle_url}")
-			print("--------------")
+			#print(f"TITLE: {bundle_title}")
+			#print(f"INFO: {bundle_desc}")
+			#print(f"URL: {bundle_url}")
+			#print("--------------")
 			sorted_data.append({'url': bundle_url, 'description': bundle_desc, 'title': bundle_title})
 		self.cache[search_term.lower()] = sorted_data 
-		print(self.cache)
+		#print(self.cache)
 		return sorted_data
 	
 class Pokedex:
@@ -354,6 +354,7 @@ class Wiki:
 class DuckDuckGo:
 	def __init__(self, useragent="Python3-Library"):
 		self.useragent = useragent
+		self.cache = {}
 		
 	def get(self, search_term):
 		res = requests.get(f"https://api.duckduckgo.com/?q={search_term}&no_redirect=1&format=json&pretty=1&t=Python-library").text
@@ -361,10 +362,13 @@ class DuckDuckGo:
 		return data
 		
 	def search(self, search_term):
+		if self.cache.get(search_term.lower(), None):
+			#print("Getting cached version.")
+			return self.cache[search_term.lower()]
 		payload = {
 		'User-Agent':self.useragent
 		}
-		final_data = {'results':[], 'snippets':[], 'urls': [], 'extras': {'snippets': [], 'urls': []}}
+		final_data = {'titles':[], 'snippets':[], 'urls': [], 'extras': {'snippets': [], 'urls': []}}
 		url = f"https://duckduckgo.com/html?q={search_term}&t=ffab&atb=v162-6__&ia=web&iax=qa"
 		r = requests.get(url, headers=payload).text
 		s = BeautifulSoup(r, 'html.parser')
@@ -374,9 +378,9 @@ class DuckDuckGo:
 		for item in divs:
 			#print(item.get('class'))
 			if item.get('class'):
-				if "results" in item.get('class'):
+				if "result__a" in item.get('class'):
 					#print(f"RESULT: {item.text.strip()}")
-					final_data['results'].append(item.text.strip())
+					final_data['titles'].append(item.text.strip())
 					
 				if "result__snippet" in item.get('class'):
 					#print(f"RESULT SNIPPET: {item.text.strip()}")
@@ -393,7 +397,21 @@ class DuckDuckGo:
 				if "result__extras__url" in item.get('class'):
 					#print(f"RESULT EXTRA URL: {item.text.strip()}")
 					final_data['extras']['urls'].append(item.text.strip())
-		return final_data
+		
+		
+		sorted_data = []
+		for i in range(0, len(final_data['urls'])):
+			bundle_url = final_data['urls'][i]
+			bundle_desc = final_data['snippets'][i]
+			bundle_title = final_data['titles'][i]
+			#print(f"TITLE: {bundle_title}")
+			#print(f"INFO: {bundle_desc}")
+			#print(f"URL: {bundle_url}")
+			#print("--------------")
+			sorted_data.append({'url': bundle_url, 'description': bundle_desc, 'title': bundle_title})
+		self.cache[search_term.lower()] = sorted_data 
+		
+		return sorted_data
 
 class SCPSite:
 	@staticmethod
