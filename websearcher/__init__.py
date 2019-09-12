@@ -1,1 +1,1 @@
-from websearcher import *
+from websearcher.websearcher import *
