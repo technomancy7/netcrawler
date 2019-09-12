@@ -12,7 +12,7 @@ from websearcher import *
 #Takes optional constructor arg to define the user-agent that the site sees.
 ddg = DuckDuckGo()
 data = ddg.search('python')
-#returns a dict of search results, dict contains keys for snippets, urls, titles
+#returns a list of search results, each entry is a dict contains keys for description, url, title
 
 data = ddg.get('steve buscemi')
 #returns a dict of information about a person, game, movie etc using DDG's Instant Answers API
@@ -26,7 +26,7 @@ from websearcher import *
 sp = Startpage()
 
 pages = sp.search('python')
-#returns a list of results from Startpage search engine
+#returns a list of search results, each entry is a dict contains keys for description, url, title
 ```
 
 ## IMGUR search
