@@ -8,7 +8,7 @@ setup(
   author = 'Kaiser',
   author_email = 'technomancer@gmx.com',
   url = 'https://github.com/Kaiz0r/websearcher',
-  download_url = 'https://github.com/joelbarmettlerUZH/Scrapeasy/archive/pypi-0_1_3.tar.gz',
+  download_url = 'https://github.com/Kaiz0r/websearcher/archive/19.09.12.2.tar.gz',
   keywords = ['search', 'easy', 'scraper', 'website', 'download', 'links', 'images', 'videos'],
   install_requires=[
           'beautifulsoup4',
