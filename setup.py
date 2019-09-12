@@ -2,7 +2,7 @@ from distutils.core import setup
 setup(
   name = 'websearcher',
   packages = ['websearcher'],
-  version = '19.09.12.2',
+  version = '19.09.12.3',
   license='gpl-3.0',
   description = 'A collection of tools for searching the internets.',
   author = 'Kaiser',
