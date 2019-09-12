@@ -13,7 +13,13 @@ class IMGUR:
 		self.search_url = "https://api.imgur.com/3/gallery/search/time/all/?q="
 		self.gallery_url = "https://api.imgur.com/3/gallery/t/$TERM$/time/all/"
 		self.reddit_url = "https://api.imgur.com/3/gallery/r/$TERM$/time/all/"	
+	
+		self.upload_url = "https://api.imgur.com/3/upload"
 		
+	def upload(self, path):
+		resp = requests.post(f"{self.upload_url}", headers=self.payload, files={'image': open(path, 'rb')}).text
+		return json.loads(resp)
+	
 	def search(self, term):
 		resp = requests.get(f"{self.search_url}{term}", headers=self.payload).text
 		return json.loads(resp)
