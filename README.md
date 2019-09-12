@@ -29,6 +29,45 @@ pages = sp.search('python')
 #returns a list of results from Startpage search engine
 ```
 
+## IMGUR search
+
+```py
+from websearcher import *
+
+#Takes required constructor arg to provide your own app id, obtained from registering on the site.
+img = IMGUR('your-app-id')
+
+data = img.search('steve buscemi')
+#returns a dict of search results
+
+data = img.getRandom('christopher walken')
+#returns a random image
+
+data = img.gallery('steve buscemi')
+#returns a dict of a specific gallery on imgur
+
+data = img.reddit('aww')
+#returns a dict of images pulled from reddit
+
+data = img.randomReddit('aww')
+#returns a random image
+```
+
+## Wolfram|Alpha query
+
+```py
+from websearcher import *
+
+#Takes required constructor arg to provide your own app id, obtained from registering on the site.
+wf = Wolfram('your-app-id')
+print(wf.send('population of uk'))
+#returns a plaintext qeury from wolfram alpha
+
+img = wf.image('population of uk'))
+#returns a raw image of data from wolfram
+
+```
+
 ## Wikimedia
 
 ```py
