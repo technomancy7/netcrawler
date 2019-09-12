@@ -2,6 +2,55 @@ import requests
 from bs4 import BeautifulSoup
 import json
 from os import path, system
+import urllib.parse
+
+class IMGUR:
+	def __init__(self, client_id):
+		self.payload = {
+		'Authorization': f'Client-ID {client_id}'
+		}
+		
+		self.search_url = "https://api.imgur.com/3/gallery/search/time/all/?q="
+		self.gallery_url = "https://api.imgur.com/3/gallery/t/$TERM$/time/all/"
+		self.reddit_url = "https://api.imgur.com/3/gallery/r/$TERM$/time/all/"	
+		
+	def search(self, term):
+		resp = requests.get(f"{self.search_url}{term}", headers=self.payload).text
+		return json.loads(resp)
+
+	def gallery(self, term):
+		resp = requests.get(f"{self.gallery_url.replace('$TERM$', term)}", headers=self.payload).text
+		return json.loads(resp)
+
+	def reddit(self, term):
+		resp = requests.get(f"{self.reddit_url.replace('$TERM$', term)}", headers=self.payload).text
+		return json.loads(resp)
+	
+class Wolfram:
+	def __init__(self, app_id):
+		self.appid = app_id
+		self.conv_id = ""
+		
+		self.url = f"http://api.wolframalpha.com/v1/conversation.jsp?"
+	
+	def send(self, message):
+		args = f"appid={self.appid}"
+		
+		if self.conv_id != "":
+			args += f"&conversationid={self.conv_id}"
+			
+		args += f"&i={urllib.parse.quote(message)}"
+		
+		r = requests.get(self.url+args).text
+		msg = json.loads(r)
+		if msg.get('error'):
+			return msg['error']
+		
+		if self.conv_id == "":
+			self.conv_id = msg['conversationID']
+			
+		return msg['result']
+
 
 class Startpage:
 	def __init__(self, useragent="Python3-Library"):
@@ -9,7 +58,7 @@ class Startpage:
 		self.cache = {}
 		
 	def get(self, search_term):
-		res = requests.get(f"https://www.startpage.com/do/search?lui=english&language=english&cat=web&query={search_term}&nj=&anticache=316666").text
+		res = requests.get(f"https://www.startpage.com/do/search?lui=english&language=english&cat=web&query={urllib.parse.quote(search_term)}&nj=&anticache=316666").text
 		data = json.loads(res)
 		return data
 	
@@ -21,27 +70,26 @@ class Startpage:
 		'User-Agent':self.useragent
 		}
 		final_data = {'urls':[], 'descriptions':[], 'titles':[]}
-		url = f"https://www.startpage.com/do/search?lui=english&language=english&cat=web&query={search_term}&nj=&anticache=316666"
+		url = f"https://www.startpage.com/do/search?lui=english&language=english&cat=web&query={urllib.parse.quote(search_term)}"
+		#https://www.startpage.com/do/search?lui=english&language=english&cat=web&query=deus+ex
 		r = requests.get(url, headers=payload).text
 		s = BeautifulSoup(r, 'html.parser')
 		#print(s)
-		results = s.find_all(['div', 'h3', 'p'])
+		results = s.find_all(['div'])
 
 		for item in results:
 			#print(item.get('class'))
 			if item.get('class'):
-				if "search-item__title" in item.get('class') and "promotion__title" not in item.get('class'):
+				if "w-gl__result" in item.get('class'):
 					#print(f"RESULT: {item.text.strip()}")
-					final_data['titles'].append(item.text.strip())
+					final_data['titles'].append(item.find('h3').text.strip())
 					
-				if "search-item__sub-title" in item.get('class'):
+				if "w-gl__result" in item.get('class'):
 					#print(f"RESULT SNIPPET: {item.text.strip()}")
-					final_data['urls'].append(item.find('span').text.strip().split("\n\n")[0])
+					final_data['descriptions'].append(item.find('span').text.strip().split("\n\n")[0])
 					
-				if "search-item__body" in item.get('class'):
-					#print(f"RESULT URL: {item.text.strip()}")
-					if "Switch to Startpage.com" not in item.text.strip():
-						final_data['descriptions'].append(item.text.strip())
+				if "w-gl__result" in item.get('class'):
+					final_data['urls'].append(item.find('a').get('href'))
 					
 		sorted_data = []
 		for i in range(0, len(final_data['urls'])):
@@ -240,7 +288,7 @@ class Wiki:
 		
 	#Raw API call to retrieve entity information
 	def data(self, search):
-		res = json.loads(requests.get(f"{self.wikidata}action=wbsearchentities&format=json&search={search}&language=en").text)
+		res = json.loads(requests.get(f"{self.wikidata}action=wbsearchentities&format=json&search={urllib.parse.quote(search_term)}&language=en").text)
 		try:
 			_id = res['search'][0]['id']
 			return self.dataId(_id)
