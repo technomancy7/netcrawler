@@ -17,9 +17,10 @@ class IMGUR:
 		self.upload_url = "https://api.imgur.com/3/upload"
 		
 	def upload(self, path):
-		resp = requests.post(f"{self.upload_url}", headers=self.payload, files={'image': open(path, 'rb')}).text
-		return json.loads(resp)
-	
+		with open(path, 'rb') as img:
+			resp = requests.post(f"{self.upload_url}", headers=self.payload, files={'image': img}).text
+			return json.loads(resp)
+		
 	def search(self, term):
 		resp = requests.get(f"{self.search_url}{term}", headers=self.payload).text
 		return json.loads(resp)
