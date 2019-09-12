@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import json
 from os import path, system
 import urllib.parse
-
+from random import choice
 class IMGUR:
 	def __init__(self, client_id):
 		self.payload = {
@@ -18,6 +18,10 @@ class IMGUR:
 		resp = requests.get(f"{self.search_url}{term}", headers=self.payload).text
 		return json.loads(resp)
 
+	def getRandom(self, term):
+		items = self.search(term)
+		return choice(items['data'])
+		
 	def gallery(self, term):
 		resp = requests.get(f"{self.gallery_url.replace('$TERM$', term)}", headers=self.payload).text
 		return json.loads(resp)
@@ -25,13 +29,23 @@ class IMGUR:
 	def reddit(self, term):
 		resp = requests.get(f"{self.reddit_url.replace('$TERM$', term)}", headers=self.payload).text
 		return json.loads(resp)
+
+	def redditRandom(self, term):
+		items = self.reddit(term)
+		return choice(items['data'])
 	
 class Wolfram:
 	def __init__(self, app_id):
 		self.appid = app_id
 		self.conv_id = ""
 		
-		self.url = f"http://api.wolframalpha.com/v1/conversation.jsp?"
+		self.url = "http://api.wolframalpha.com/v1/conversation.jsp?"
+		self.simple_url = "http://api.wolframalpha.com/v1/simple?"
+		
+	def image(self, message):
+		args = f"appid={self.appid}"
+		args += f"&i={urllib.parse.quote(message)}"
+		return requests.get(self.simple_url+args).content
 	
 	def send(self, message):
 		args = f"appid={self.appid}"
