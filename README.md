@@ -6,7 +6,7 @@ Most classes are WIP and are subject to change and expansion, I hope to add alot
 Each site is also subject to its own rules and terms of service. Abusing the calls or spamming the sites or harvesting large amounts of data could get you blocked depending on the sites terms. I take no responsibility for that. Just use common sense and be sensible about it.
 
 ## DuckDuckGo search
-
+DuckDuckGo is an alternate search engine focused on privacy.
 ```py
 from netcrawler import *
 
@@ -20,7 +20,7 @@ data = ddg.get('steve buscemi')
 ```
 
 ## Startpage Search
-
+Startpage is another search engine.
 ```py
 from netcrawler import *
 
@@ -31,7 +31,7 @@ pages = sp.search('python')
 ```
 
 ## IMGUR search
-
+IMGUR is a popular image hosting service.
 ```py
 from netcrawler import *
 
@@ -52,10 +52,13 @@ data = img.reddit('aww')
 
 data = img.randomReddit('aww')
 #returns a random image
+
+img.upload('/path/to/image')
+#uploads an image to your account
 ```
 
 ## Wolfram|Alpha query
-
+A knowledge engine that contains answers to many things.
 ```py
 from netcrawler import *
 
@@ -70,7 +73,7 @@ img = wf.image('population of uk'))
 ```
 
 ## Wikimedia
-
+Utilities for interfacing with the Wiki services.
 ```py
 from netcrawler import *
 
@@ -82,11 +85,11 @@ summaries = wiki.summarize('python')
 #shows a summary of topics from wikimedias OpenSearch API
 
 pages = wiki.query('python')
-#searches wikipedia for pags, returns a list of found pages
+#searches wikipedia for term, returns a list of found pages
 ```
 
 ## SCP
-
+Quick access to the SCP Foundation Wiki.
 ```py
 from netcrawler import *
 print(SCPSite.search('001'))
@@ -94,15 +97,18 @@ print(SCPSite.search('001'))
 ```
 
 ## ReverseImageSearch
-
+Calls to Googles Reverse Image Search
 ```py
 from netcrawler import *
 print(ReverseImageSearch().basic('an-image-URL'))
-#returns what is in the image, e.i. a persons name 
+#returns what is in the image, e.i. a persons name
+
+#Due to how google handles the service, theres no way to call this directly for files on your hard drive.
+#A workaround for now would be using the IMGUR class in this module to upload the file, get the URL from there, and use that for this.
 ```
 
 ## Gamefaqs
-
+Various access to gamefaq's services.
 ```py
 from netcrawler import *
 
@@ -121,7 +127,7 @@ deusex.images() #returns a dict of images, with keys for `box` which is the game
 deusex.cheats() #returns a dict of cheats, with keys for author and text
 faq = deusex.faqs() #returns a Faqs object, which has its own methods
 
-faq.text() returns the raw text body from the faqs page
+faq.text() #returns the raw text body from the faqs page
 faq.find('0.1 Controls') #finds the line containing the text and the following lines until the next break
 faq.find('Augmentation', 5) #finds the first mention of the word and returns that line and the following 5 lines
 faq.find('Ocean Lab', 'Area 51') #finds the first mention of the word, and every line after until the second arg is found
@@ -130,7 +136,9 @@ faq.author_url #direct profile link to the author
 
 ```
 
-## Pokeapi
+## Pokemon API
+Wrapper for the Pokeapi service, which hosts data for everything you could possibly need to know about pokemon.
+This is probably the most work-in-progress class. The API is very extensive and has alot of information, so for now i just wrapped the most useful features that I would use personally.
 
 ```py
 from netcrawler import *
