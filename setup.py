@@ -1,14 +1,14 @@
 from distutils.core import setup
 setup(
-  name = 'webcrawler',
-  packages = ['webcrawler'],
+  name = 'netcrawler',
+  packages = ['netcrawler'],
   version = '19.09.12.6',
   license='gpl-3.0',
   description = 'A collection of tools for searching the internets.',
   author = 'Kaiser',
   author_email = 'technomancer@gmx.com',
-  url = 'https://github.com/Kaiz0r/webcrawler',
-  download_url = 'https://github.com/Kaiz0r/webcrawler/archive/19.09.12.6.tar.gz',
+  url = 'https://github.com/Kaiz0r/netcrawler',
+  download_url = 'https://github.com/Kaiz0r/netcrawler/archive/19.09.12.6.tar.gz',
   keywords = ['search', 'easy', 'scraper', 'website', 'download', 'links', 'images', 'videos'],
   install_requires=[
           'beautifulsoup4',
