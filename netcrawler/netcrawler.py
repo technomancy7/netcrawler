@@ -4,6 +4,8 @@ import json
 from os import path, system
 import urllib.parse
 from random import choice
+from html import unescape
+from collections import Counter
 
 class IMGUR:
 	def __init__(self, client_id):
@@ -537,7 +539,7 @@ class Gamefaqs:
 	def __init__(self):
 		self.base_url = "https://gamefaqs.gamespot.com/search?game="
 		self.headers = {
-		'User-Agent':'Mozilla/5.0 (X11; Python3) Gecko/20100101 Firefox/52.0'
+		'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0'
 		}
 		self.cache = {}
 		
@@ -547,7 +549,7 @@ class Gamefaqs:
 			return self.cache[game]
 		
 		url = f"{self.base_url}{game.replace(' ', '+')}"
-		print(f"Searching {url}")
+		#print(f"Searching {url}")
 		
 		searchpage = BeautifulSoup(requests.get(url, headers=self.headers).text, 'html5lib')
 		#print(searchpage)
@@ -575,10 +577,10 @@ class Game:
 	def __init__(self, gamepage_url):
 		self.url = f"https://gamefaqs.gamespot.com{gamepage_url}"
 		self.headers = {
-		'User-Agent':'Mozilla/5.0 (X11; Python3) Gecko/20100101 Firefox/52.0'
+		'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0'
 		}
 		
-		print(f"Parsing {self.url}")
+		#print(f"Parsing {self.url}")
 		self.html = BeautifulSoup(requests.get(self.url, headers=self.headers).text, 'html5lib')
 		self.cache = {}
 		self.cheatsurl = f"{self.url}/cheats"
@@ -639,14 +641,14 @@ class Game:
 	
 	def details(self):
 		if self.cache.get('details'):
-			print("Getting cache...")
+			#print("Getting cache...")
 			return self.cache['details']
 		dets = ""
 		ls = self.html.find_all('div')
 
 		for item in ls:
 			if item.get('class') == ['pod', 'pod_gameinfo']:
-				print(item)
+				#print(item)
 				for thing in item.find_all(['h2', 'li']):
 					if thing.get_text(' ', strip=True) != "Game Detail":
 						print(thing.get_text(' ', strip=True))
@@ -657,7 +659,7 @@ class Game:
 	
 	def trivia(self):
 		if self.cache.get('trivia'):
-			print("Getting cache...")
+			#print("Getting cache...")
 			return self.cache['trivia']
 		
 		trivs = self.html.find_all('p')
@@ -668,16 +670,118 @@ class Game:
 					return item.text
 	
 	def cheats(self):
-		pass
-	
+		if self.cache.get('cheats'):
+			return self.cache['cheats']
+
+		html = BeautifulSoup(requests.get(self.cheatsurl, headers=self.headers, allow_redirects=True).text, 'html5lib')
+		
+
+		cheats = html.find_all('script') # script type="application/ld+json"	
+		for item in cheats:
+
+			if item.get('type') and item.get('type') == 'application/ld+json':
+				item = item.text.replace('<script type="application/ld+json">', '')
+				item = item.replace('</script>', '')
+				js = json.loads(item)
+				if js.get('@type') == "VideoGame":
+					for en in js['gameTip']:
+						en['text'] = unescape(en['text'])
+						en['text'] = en['text'].replace('&quot;', '"')
+						en['text'] = en['text'].replace('<br />', '\n')
+					self.cache['cheats'] = js
+					return js
+				
 	def faqs(self):
-		pass
+		if self.cache.get('faqs'):
+			return self.cache['faqs']
+
+		html = BeautifulSoup(requests.get(self.faqsurl, headers=self.headers, allow_redirects=True).text, 'html5lib')
+		faqs = html.find_all('a')
+		res = []
+		en = {}
+		for item in faqs:
+			#print(item.get('href'))
+			if item.get('href') and "/faqs/" in item.get('href'):
+				en['url'] = f"https://gamefaqs.gamespot.com{item.get('href')}"
+			if item.get('href') and "/community/" in item.get('href'):	
+				en['author'] = f"https://gamefaqs.gamespot.com{item.get('href')}"
+				en['author_name'] = item.string	
+				
+			#print(en)
+			if en.get('author') and en.get('url'):
+				res.append(FAQ(en))
+				en = {}
+		#print(res)
+		self.cache['faqs'] = res
+		return res
 	
 	def reviews(self):
 		pass
 	
 	def images(self):
-		pass
+		if self.cache.get('images'):
+			return self.cache['images']
+
+		html = BeautifulSoup(requests.get(self.imagesurl, headers=self.headers, allow_redirects=True).text, 'html5lib')
+		
+		results = {'box': [], 'screens': [], 'unknown': []}
+		images = html.find_all('a') # script type="application/ld+json"	
+		for item in images:
+			if item.get('href') and "/images/" in item.get('href'):
+				url = item.find('img').get('src')
+				if "/box/" in url:
+					results['box'].append(url)
+				elif "/screens/" in url:
+					results['screens'].append(url)
+				else:
+					results['unknown'].append(url)
+		
+		self.cache['images'] = results
+		return results
 	
 	def answers(self):
 		pass	
+
+class FAQ:
+	def __init__(self, payload):
+		self.url = payload.get('url')
+		self.author = payload.get('author')
+		self.author_url = payload.get('author_url')
+		self.html = ""
+		self.headers = {
+		'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0'
+		}
+		
+	def text(self):
+		if self.html:
+			return self.html
+		
+		html = BeautifulSoup(requests.get(self.url, headers=self.headers, allow_redirects=True).text, 'html5lib')
+		
+		for item in html.find_all('pre'):
+			if item.get('id') == "faqtext":
+				self.html = item.text
+				return item.text
+		
+	def assumeHeader(self):
+		c = Counter(self.text().split("\n"))
+		return list(c.keys()[1])
+
+	def find(self, term, breakln=""):
+		if type(breakln) == str and breakln.isdigit():
+			breakln = int(breakln)
+		text = self.text()
+		capt = []
+		running = False
+		for item in text.split("\n"):
+			if term in item:
+				running = True
+			if running:
+				capt.append(item)
+			if type(breakln) == str:
+				if item == breakln:
+					running = False
+			if type(breakln) == int:
+				if breakln == len(capt):
+					running = False
+		return capt
