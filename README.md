@@ -1,4 +1,4 @@
-# websearcher
+# netcrawler
 Collection of utilities for searching the internets.
 
 The idea is, one module containing various utilities and classes for getting information on various things from around the internet as simply as possible.
@@ -7,7 +7,7 @@ Most classes are WIP and are subject to change and expansion, I hope to add alot
 ## DuckDuckGo search
 
 ```py
-from websearcher import *
+from netcrawler import *
 
 #Takes optional constructor arg to define the user-agent that the site sees.
 ddg = DuckDuckGo()
@@ -21,7 +21,7 @@ data = ddg.get('steve buscemi')
 ## Startpage Search
 
 ```py
-from websearcher import *
+from netcrawler import *
 
 sp = Startpage()
 
@@ -32,7 +32,7 @@ pages = sp.search('python')
 ## IMGUR search
 
 ```py
-from websearcher import *
+from netcrawler import *
 
 #Takes required constructor arg to provide your own app id, obtained from registering on the site.
 img = IMGUR('your-app-id')
@@ -56,7 +56,7 @@ data = img.randomReddit('aww')
 ## Wolfram|Alpha query
 
 ```py
-from websearcher import *
+from netcrawler import *
 
 #Takes required constructor arg to provide your own app id, obtained from registering on the site.
 wf = Wolfram('your-app-id')
@@ -71,7 +71,7 @@ img = wf.image('population of uk'))
 ## Wikimedia
 
 ```py
-from websearcher import *
+from netcrawler import *
 
 wiki = Wiki()
 description = wiki.identify('python')
@@ -87,7 +87,7 @@ pages = wiki.query('python')
 ## SCP
 
 ```py
-from websearcher import *
+from netcrawler import *
 print(SCPSite.search('001'))
 #returns the raw data of the searched SCP
 ```
@@ -95,7 +95,7 @@ print(SCPSite.search('001'))
 ## ReverseImageSearch
 
 ```py
-from websearcher import *
+from netcrawler import *
 print(ReverseImageSearch().basic('an-image-URL'))
 #returns what is in the image, e.i. a persons name 
 ```
@@ -103,7 +103,7 @@ print(ReverseImageSearch().basic('an-image-URL'))
 ## Gamefaqs
 
 ```py
-from websearcher import *
+from netcrawler import *
 
 #games searched are cached for current session to ease load on the site
 gf = Gamefaqs()
@@ -123,7 +123,7 @@ deusex.trivia() #shows some trivia, is not always the same
 ## Pokeapi
 
 ```py
-from websearcher import *
+from netcrawler import *
 #Takes optional arg for cache location, used for downloading sprites
 dex = Pokedex()
 
