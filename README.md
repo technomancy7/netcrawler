@@ -3,6 +3,7 @@ Collection of utilities for searching the internets.
 
 The idea is, one module containing various utilities and classes for getting information on various things from around the internet as simply as possible.
 Most classes are WIP and are subject to change and expansion, I hope to add alot of utility functions to make getting important information quicker but still exposing the raw data.
+Each site is also subject to its own rules and terms of service. Abusing the calls or spamming the sites or harvesting large amounts of data could get you blocked depending on the sites terms. I take no responsibility for that. Just use common sense and be sensible about it.
 
 ## DuckDuckGo search
 
@@ -106,6 +107,7 @@ print(ReverseImageSearch().basic('an-image-URL'))
 from netcrawler import *
 
 #games searched are cached for current session to ease load on the site
+#every call in each game is also cached
 gf = Gamefaqs()
 
 deusex = gf.search('deus ex') #takes an optional arg to limit search by console
@@ -115,8 +117,16 @@ deusex.news() #gets current news on the game
 deusex.description() #shows the description of the game as it is on gamefaqs
 deusex.details() #gets the information
 deusex.trivia() #shows some trivia, is not always the same
+deusex.images() #returns a dict of images, with keys for `box` which is the games box arg, and `screen` which is screenshots
+deusex.cheats() #returns a dict of cheats, with keys for author and text
+faq = deusex.faqs() #returns a Faqs object, which has its own methods
 
-#other pages and features such as cheats, faq links, images etc planned
+faq.text() returns the raw text body from the faqs page
+faq.find('0.1 Controls') #finds the line containing the text and the following lines until the next break
+faq.find('Augmentation', 5) #finds the first mention of the word and returns that line and the following 5 lines
+faq.find('Ocean Lab', 'Area 51') #finds the first mention of the word, and every line after until the second arg is found
+faq.author #string of the author's name
+faq.author_url #direct profile link to the author
 
 ```
 
