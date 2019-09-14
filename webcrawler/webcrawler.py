@@ -4,6 +4,7 @@ import json
 from os import path, system
 import urllib.parse
 from random import choice
+
 class IMGUR:
 	def __init__(self, client_id):
 		self.payload = {
@@ -170,7 +171,7 @@ class Pokedex:
 		else:
 			image_url = pokemon['sprites']['front_default']
 			with open(self.image_cache+pokemon['name'].lower(), "wb") as file:
-				response = get(image_url)
+				response = requests.get(image_url)
 				file.write(response.content)
 				
 	def fetchType(self, type_name):
@@ -469,7 +470,7 @@ class SCP:
 				self.contents.append(item)
 		
 class ReverseImageSearch:
-	def __init__(self, useragent="User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0"):
+	def __init__(self, useragent="Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0"):
 		self.useragent = useragent
 	
 	def get(self, img_url, count=0):
