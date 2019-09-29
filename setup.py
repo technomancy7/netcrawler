@@ -2,16 +2,17 @@ from distutils.core import setup
 setup(
   name = 'netcrawler',
   packages = ['netcrawler'],
-  version = '19.09.14',
+  version = '19.09.29',
   license='gpl-3.0',
   description = 'A collection of tools for searching the internets.',
   author = 'Kaiser',
   author_email = 'technomancer@gmx.com',
   url = 'https://github.com/Kaiz0r/netcrawler',
-  download_url = 'https://github.com/Kaiz0r/netcrawler/archive/19.09.14.tar.gz',
+  download_url = 'https://github.com/Kaiz0r/netcrawler/archive/19.09.29.tar.gz',
   keywords = ['search', 'easy', 'scraper', 'website', 'download', 'links', 'images', 'videos'],
   install_requires=[
           'beautifulsoup4',
+          'requests'
       ],
   classifiers=[
     # How mature is this project? Common values are
