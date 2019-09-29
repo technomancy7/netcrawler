@@ -43,6 +43,13 @@ class IMGUR:
 	def redditRandom(self, term):
 		items = self.reddit(term)
 		return choice(items['data'])
+
+class Uguu:
+	@staticmethod
+	def upload(filepath):
+		with open(filepath, 'rb') as img:
+			resp = requests.post(f"https://uguu.se/api.php?d=upload-tool", files={'file': img, 'name':"upload"}).text
+			return resp
 	
 class Wolfram:
 	def __init__(self, app_id):
@@ -75,7 +82,47 @@ class Wolfram:
 			
 		return msg['result']
 
+class Youtube:
+	def __init__(self, useragent="Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0"):
+		print("NOT YET FUNCTIONAL")
+		self.useragent = useragent
+		self.cache = {}
+		
+	def search(self, search_term):
+		if self.cache.get(search_term.lower(), None):
+			return self.cache[search_term.lower()]
+		
+		payload = {
+		'User-Agent':self.useragent
+		}
+		
+		final_data = {'urls':[], 'descriptions':[], 'titles':[]}
+		url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(search_term)}&page=&utm_source=opensearch"
 
+		r = requests.get(url, headers=payload, allow_redirects=True).text
+		s = BeautifulSoup(r, 'html.parser')
+		results = s.find_all(['div'])
+
+		for item in results:
+			#print(item.get('class'))
+			if item.get('class'):
+				#print(item.get('class'))
+				if "yt-lockup-content" in item.get('class'):
+					#print(item)
+					final_data['titles'].append(item.find('a').text.strip())
+					final_data['descriptions'].append(item.get('span').text.strip())
+					final_data['urls'].append(item.find('a').get('href'))
+					
+		sorted_data = []
+		for i in range(0, len(final_data['urls'])):
+			bundle_url = final_data['urls'][i]
+			bundle_desc = final_data['descriptions'][i]
+			bundle_title = final_data['titles'][i]
+			sorted_data.append({'url': bundle_url, 'description': bundle_desc, 'title': bundle_title})
+		
+		self.cache[search_term.lower()] = sorted_data 
+		return sorted_data		
+	
 class Startpage:
 	def __init__(self, useragent="Python3-Library"):
 		self.useragent = useragent
@@ -310,7 +357,7 @@ class Wiki:
 	def __init__(self):
 		self.wikidata = "https://www.wikidata.org/w/api.php?"
 		self.wikipedia = "https://en.wikipedia.org/w/api.php?"
-		
+		self.wikipedia_site = "https://en.wikipedia.org/wiki/"
 	#Raw API call to retrieve entity information
 	def data(self, search):
 		res = json.loads(requests.get(f"{self.wikidata}action=wbsearchentities&format=json&search={urllib.parse.quote(search_term)}&language=en").text)
@@ -361,6 +408,30 @@ class Wiki:
 			ret.append({'title': data['query']['pages'][item]['title'], 'text': cleaned})
 		
 		return ret
+	
+	def page(self, name):
+		if not name.startswith("http"):
+			url = self.wikipedia_site+name
+		else:
+			url = name
+		
+		print(url)
+		s = BeautifulSoup(requests.get(url).text, 'html5lib')
+		
+		results = s.find_all(['h2', 'p'])
+		
+		types = {}
+		cur = 'Summary'
+		cur_data = []
+		for item in results:
+			if item.text != "Contents" and item.text != "Navigation menu" and item != None and item.text != None:
+				if item.name == "h2":
+					types[cur] = cur_data
+					cur_data = []
+					cur = item.text.replace('[edit]', '')
+				else:
+					cur_data.append(item.text.replace('[edit]', ''))
+		return types
 	
 class DuckDuckGo:
 	def __init__(self, useragent="Python3-Library"):
