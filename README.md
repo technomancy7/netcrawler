@@ -28,6 +28,9 @@ sp = Startpage()
 
 pages = sp.search('python')
 #returns a list of search results, each entry is a dict contains keys for description, url, title
+
+images = sp.images('steve buscemi')
+# returns a list of dict entries, same format as normal search, but the urls are images pulled from Image Search
 ```
 
 ## IMGUR search
