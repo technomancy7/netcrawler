@@ -57,6 +57,12 @@ img.upload('/path/to/image')
 #uploads an image to your account
 ```
 
+## Uguu file upload
+```
+Uguu.upload('/path/to/file')
+#returns a URL to the uploaded file
+```
+
 ## Wolfram|Alpha query
 A knowledge engine that contains answers to many things.
 ```py
@@ -104,7 +110,7 @@ print(ReverseImageSearch().basic('an-image-URL'))
 #returns what is in the image, e.i. a persons name
 
 #Due to how google handles the service, theres no way to call this directly for files on your hard drive.
-#A workaround for now would be using the IMGUR class in this module to upload the file, get the URL from there, and use that for this.
+#A workaround for now would be using the Uguu class in this module to upload the file, get the URL from there, and use that for this.
 ```
 
 ## Gamefaqs
