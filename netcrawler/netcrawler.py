@@ -403,8 +403,8 @@ class Wiki:
 		data = json.loads(requests.get(f"{self.wikipedia}action=query&prop=extracts&format=json&exintro=&titles={search}").text)
 		for item in data['query']['pages']:
 			cleaned = data['query']['pages'][item]['extract']
-			if markdown:
-				cleaned = md(cleaned)
+			#if markdown:
+				#cleaned = md(cleaned)
 			ret.append({'title': data['query']['pages'][item]['title'], 'text': cleaned})
 		
 		return ret
