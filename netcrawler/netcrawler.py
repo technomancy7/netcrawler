@@ -127,12 +127,36 @@ class Startpage:
 	def __init__(self, useragent="Python3-Library"):
 		self.useragent = useragent
 		self.cache = {}
+		self.image_cache = {}
 		
 	def basic(self, search_term):
 		return self.search(search_term)[0]['description']
 	
 	def basicURL(self, search_term):
 		return self.search(search_term)[0]['url']
+	
+	def images(self, search_term):
+		if self.image_cache.get(search_term.lower(), None):
+			return self.image_cache[search_term.lower()]
+		payload = {
+		'User-Agent':self.useragent
+		}
+
+		url = f"https://www.startpage.com/do/search?lui=english&language=english&cat=pics&query={urllib.parse.quote(search_term)}"
+		
+		data = []
+		r = requests.get(url, headers=payload).text
+		s = BeautifulSoup(r, 'html.parser')
+		results = s.find_all(['div'])
+		for item in results:
+			if item.get('class'):
+				#print(item.get('class'))
+				if "image-container" in item.get('class'):
+					js = json.loads(item.get('data-img-metadata'))
+					data.append({'title': js['title'] , 'description': js['description'], 'url': js['clickUrl']})
+		
+		self.image_cache[search_term.lower()] = data
+		return data
 	
 	def search(self, search_term):
 		if self.cache.get(search_term.lower(), None):
