@@ -182,7 +182,7 @@ class Startpage:
 					
 				if "w-gl__result" in item.get('class'):
 					#print(f"RESULT SNIPPET: {item.text.strip()}")
-					final_data['descriptions'].append(item.find('span').text.strip().split("\n\n")[0])
+					final_data['descriptions'].append(item.find('p').text.strip().split("\n\n")[0])
 					
 				if "w-gl__result" in item.get('class'):
 					final_data['urls'].append(item.find('a').get('href'))
