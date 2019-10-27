@@ -6,7 +6,147 @@ import urllib.parse
 from random import choice
 from html import unescape
 from collections import Counter
+from urllib import parse
 
+try:
+	from youtube_dl import YoutubeDL
+	YTDL_ENABLED = True
+except:
+	YTDL_ENABLED = False
+	
+class LinkCrawler:
+	def __init__(self, parser='html5lib', useragent="Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0"):
+		self.payload = {
+			'User-Agent': useragent
+		}
+		self.parser = parser
+		
+		self.cache = {}
+		self.parsers = {
+			'youtube.com': self._youtubeUnfurler,
+			'imgur.com': self._imgurUnfurler,
+			'gist.github.com': self._gistUnfurler,
+			'stackoverflow.com': self._stackUnfurler,
+			'duckduckgo.com': self._ddgUnfurler,
+			'startpage.com': self._spUnfurler
+		}
+	
+	def _ddgUnfurler(self, data):
+		search = ""
+		for item in data.query.split("&"):
+			if item.startswith("q="):
+				search = item.replace('q=', '')
+
+		if search:
+			return DuckDuckGo().search(search)
+		
+	def _spUnfurler(self, data):
+		search = ""
+		for item in data.query.split("&"):
+			if item.startswith("query="):
+				search = item.replace('query=', '')
+
+		if search:
+			return Startpage().search(search)
+		
+	def _stackUnfurler(self, data):
+		try:
+			_id = data.path.split("/")[2]
+			site = data.netloc.split(".")[0]
+			url = f"https://api.stackexchange.com/2.2/questions/{_id}?order=desc&sort=activity&site={site}"
+			raw = requests.get(url, headers=self.payload, allow_redirects=True).json()
+			return raw
+		except Exception as e:
+			print(e)
+		
+	def _youtubeUnfurler(self, data):
+		if not YTDL_ENABLED:
+			return {'error': 'Missing library! Youtube_DL is required to extract youtube information.'}
+		
+		if data.path == "/watch" and data.query:
+			url = parse.urlunsplit(data)
+			ytdlopts = {
+				'format': 'bestaudio/best',
+				'outtmpl': 'factory/%(extractor)s-%(id)s.%(ext)s',
+				'restrictfilenames': True,
+				'noplaylist': True,
+				'nocheckcertificate': True,
+				'ignoreerrors': False,
+				'logtostderr': False,
+				'quiet': True,
+				'no_warnings': True,
+				'default_search': 'ytsearch7',
+				'source_address': '0.0.0.0'  # ipv6 addresses cause issues sometimes
+			}
+			
+			with YoutubeDL(ytdlopts) as ydl:
+				data = ydl.extract_info(url, download=False)
+				filtered = {'author': data['uploader'], 'author_url': data['uploader_url'], 'title': data['title'], 'description': data['description'], 'image': data['thumbnail'], 'stream': data['url']}
+				return filtered
+		else:
+			return {'title': 'YouTube Home'}
+		
+	def _imgurUnfurler(self, data):
+		url = parse.urlunsplit(data)
+		print(url)
+		s = self.inspect(url)
+		
+		ret = {'title': s.title.text.strip()}
+		if s.find('p') and s.find('p').text:
+			ret['p'] = s.find('p').text.strip()
+		
+		if s.find('link') and s.find('link', rel='image_src'):
+			ret['image'] = s.find('link', rel='image_src').get('href')
+			
+		return ret
+	
+	def _gistUnfurler(self, data):
+		try:
+			api = "https://api.github.com/gists/:id"
+			api = api.replace(":id", data.path.split("/")[2])
+			data = requests.get(api).json()
+			gist = data['files'][list(data['files'].keys())[0]]
+			return gist
+		except Exception as e:
+			print(e)
+			
+	def _genericUnfurler(self, data):
+		url = parse.urlunsplit(data)
+		s = self.inspect(url)
+		
+		ret = {'title': s.title.text.strip()}
+		if s.find('p') and s.find('p').text:
+			ret['p'] = s.find('p').text.strip()
+			
+		if s.find('span') and s.find('span').text:
+			ret['span'] = s.find('span').text.strip()
+			
+		if s.find('img') and s.find('img').get('src'):
+			ret['image'] = f"{url}{s.find('img').get('src')}"
+			
+		return ret
+	
+	def inspect(self, url):
+		self.raw = requests.get(url, headers=self.payload, allow_redirects=True)
+		self.parsed = BeautifulSoup(self.raw.text, self.parser)		
+		return self.parsed
+	
+	def unfurl(self, link):	
+		url = parse.urlsplit(link)
+		loc = url.netloc.replace("www.", '')
+		if self.cache.get(loc, None):
+			return self.cache[loc]
+	
+		if len( url.path.split(".") ) > 1 and url.path.split(".")[1] in ['png', 'jpg', 'jpeg', 'gif', 'bmp']:
+			return {'image': link}
+
+		meth = self.parsers.get(loc, self._genericUnfurler)
+		resp = meth(url)
+		if not resp:
+			resp = self._genericUnfurler(url)
+		self.cache[loc] = resp
+		return resp
+		
 class IMGUR:
 	def __init__(self, client_id):
 		self.payload = {
@@ -44,6 +184,22 @@ class IMGUR:
 		items = self.reddit(term)
 		return choice(items['data'])
 
+class HeadlineSmasher:
+	def __init__(self, agent="Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0"):
+		self.url = 'https://www.headlinesmasher.com/headlines/random'
+		self.payload = {
+			'User-Agent': agent
+		}
+	def getRandom(self):
+		self.raw = requests.get(self.url, headers=self.payload, allow_redirects=True)
+		parsed = BeautifulSoup(self.raw.text, 'html5lib')		
+		
+		out = {}
+		for item in parsed.find_all('meta'):
+			if item.get('property') in ['og:title', 'og:url', 'og:description']:
+				out[item.get('property').split(":")[1]] = item.get('content')
+				
+		return out
 class Uguu:
 	@staticmethod
 	def upload(filepath):
@@ -150,7 +306,6 @@ class Startpage:
 		results = s.find_all(['div'])
 		for item in results:
 			if item.get('class'):
-				#print(item.get('class'))
 				if "image-container" in item.get('class'):
 					js = json.loads(item.get('data-img-metadata'))
 					data.append({'title': js['title'] , 'description': js['description'], 'url': js['clickUrl']})
@@ -160,31 +315,22 @@ class Startpage:
 	
 	def search(self, search_term):
 		if self.cache.get(search_term.lower(), None):
-			#print("Getting cached version.")
 			return self.cache[search_term.lower()]
+		
 		payload = {
 		'User-Agent':self.useragent
 		}
 		final_data = {'urls':[], 'descriptions':[], 'titles':[]}
 		url = f"https://www.startpage.com/do/search?lui=english&language=english&cat=web&query={urllib.parse.quote(search_term)}"
-		#https://www.startpage.com/do/search?lui=english&language=english&cat=web&query=deus+ex
 		r = requests.get(url, headers=payload).text
 		s = BeautifulSoup(r, 'html.parser')
-		#print(s)
 		results = s.find_all(['div'])
 
 		for item in results:
-			#print(item.get('class'))
 			if item.get('class'):
 				if "w-gl__result" in item.get('class'):
-					#print(f"RESULT: {item.text.strip()}")
 					final_data['titles'].append(item.find('h3').text.strip())
-					
-				if "w-gl__result" in item.get('class'):
-					#print(f"RESULT SNIPPET: {item.text.strip()}")
 					final_data['descriptions'].append(item.find('p').text.strip().split("\n\n")[0])
-					
-				if "w-gl__result" in item.get('class'):
 					final_data['urls'].append(item.find('a').get('href'))
 					
 		sorted_data = []
@@ -192,13 +338,9 @@ class Startpage:
 			bundle_url = final_data['urls'][i]
 			bundle_desc = final_data['descriptions'][i]
 			bundle_title = final_data['titles'][i]
-			#print(f"TITLE: {bundle_title}")
-			#print(f"INFO: {bundle_desc}")
-			#print(f"URL: {bundle_url}")
-			#print("--------------")
 			sorted_data.append({'url': bundle_url, 'description': bundle_desc, 'title': bundle_title})
+		
 		self.cache[search_term.lower()] = sorted_data 
-		#print(self.cache)
 		return sorted_data
 	
 class Pokedex:
@@ -458,7 +600,7 @@ class Wiki:
 		return types
 	
 class DuckDuckGo:
-	def __init__(self, useragent="Python3-Library"):
+	def __init__(self, useragent="Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0"):
 		self.useragent = useragent
 		self.cache = {}
 		
@@ -475,8 +617,8 @@ class DuckDuckGo:
 	
 	def search(self, search_term):
 		if self.cache.get(search_term.lower(), None):
-			#print("Getting cached version.")
 			return self.cache[search_term.lower()]
+		
 		payload = {
 		'User-Agent':self.useragent
 		}
@@ -484,30 +626,23 @@ class DuckDuckGo:
 		url = f"https://duckduckgo.com/html?q={search_term}&t=ffab&atb=v162-6__&ia=web&iax=qa"
 		r = requests.get(url, headers=payload).text
 		s = BeautifulSoup(r, 'html.parser')
-		#print(s)
 		divs = s.find_all(['div', 'a'])
-		#print(divs)
+		
 		for item in divs:
-			#print(item.get('class'))
 			if item.get('class'):
 				if "result__a" in item.get('class'):
-					#print(f"RESULT: {item.text.strip()}")
 					final_data['titles'].append(item.text.strip())
 					
 				if "result__snippet" in item.get('class'):
-					#print(f"RESULT SNIPPET: {item.text.strip()}")
 					final_data['snippets'].append(item.text.strip())
 					
 				if "result__url" in item.get('class'):
-					#print(f"RESULT URL: {item.text.strip()}")	
 					final_data['urls'].append(item.text.strip())
 					
 				if "result__extras" in item.get('class'):
-					#print(f"RESULT EXTRA: {item.text.strip()}")
 					final_data['extras']['snippets'].append(item.text.strip())
 					
 				if "result__extras__url" in item.get('class'):
-					#print(f"RESULT EXTRA URL: {item.text.strip()}")
 					final_data['extras']['urls'].append(item.text.strip())
 		
 		
@@ -516,10 +651,6 @@ class DuckDuckGo:
 			bundle_url = final_data['urls'][i]
 			bundle_desc = final_data['snippets'][i]
 			bundle_title = final_data['titles'][i]
-			#print(f"TITLE: {bundle_title}")
-			#print(f"INFO: {bundle_desc}")
-			#print(f"URL: {bundle_url}")
-			#print("--------------")
 			sorted_data.append({'url': bundle_url, 'description': bundle_desc, 'title': bundle_title})
 		self.cache[search_term.lower()] = sorted_data 
 		
@@ -555,7 +686,6 @@ class SCP:
 		page = BeautifulSoup(requests.get(url).text, 'html5lib')
 		self.title = page.find('head').find('title').text
 		for div in page.find_all('div'):
-			#print(div.get('id'))
 			if div.get('id') and div.get('id') == "page-content":
 				self.data = div
 				
@@ -644,18 +774,14 @@ class Gamefaqs:
 			return self.cache[game]
 		
 		url = f"{self.base_url}{game.replace(' ', '+')}"
-		#print(f"Searching {url}")
 		
 		searchpage = BeautifulSoup(requests.get(url, headers=self.headers).text, 'html5lib')
-		#print(searchpage)
 		ls = searchpage.find_all('div')
 
 		for item in ls:
-			#print(item)
 			if item.get('class'):
 				if item.get('class')[0] == "sr_product_name":
 					nurl = item.a.get('href')
-					#print(nurl)
 					if console:
 						if console == nurl.split("/")[1]:
 							gobj = Game(nurl)
@@ -674,8 +800,7 @@ class Game:
 		self.headers = {
 		'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0'
 		}
-		
-		#print(f"Parsing {self.url}")
+
 		self.html = BeautifulSoup(requests.get(self.url, headers=self.headers).text, 'html5lib')
 		self.cache = {}
 		self.cheatsurl = f"{self.url}/cheats"
@@ -689,7 +814,6 @@ class Game:
 
 	def news(self):
 		if self.cache.get('news'):
-			print("Getting cache...")
 			return self.cache['news']
 		
 		ls = self.html.find_all()
@@ -698,7 +822,6 @@ class Game:
 		for item in ls:
 			
 			if item.get('class'):
-				#print(item.get('class'))
 				if item.get('class')[0] == "head":
 					searching = False
 					
@@ -707,11 +830,9 @@ class Game:
 						found.append(item)
 					
 				if item.text == "Game News":
-					#print(item)
 					searching = True
 		msg = ""
 		for item in found:
-			#print(item)
 			msg += f"{item.text.split('Updated')[0]}\n"
 		
 		self.cache['news'] = msg
@@ -719,7 +840,6 @@ class Game:
 	
 	def description(self):
 		if self.cache.get('description'):
-			print("Getting cache...")
 			return self.cache['description']
 		
 		ls = self.html.find_all('div')
@@ -727,7 +847,6 @@ class Game:
 		for item in ls:
 			if item.get('class') == ['body', 'game_desc']:
 				
-				#print(item.text)
 				self.cache['description'] = item.text
 				return item.text
 			
@@ -736,14 +855,13 @@ class Game:
 	
 	def details(self):
 		if self.cache.get('details'):
-			#print("Getting cache...")
 			return self.cache['details']
+		
 		dets = ""
 		ls = self.html.find_all('div')
 
 		for item in ls:
 			if item.get('class') == ['pod', 'pod_gameinfo']:
-				#print(item)
 				for thing in item.find_all(['h2', 'li']):
 					if thing.get_text(' ', strip=True) != "Game Detail":
 						print(thing.get_text(' ', strip=True))
@@ -754,7 +872,6 @@ class Game:
 	
 	def trivia(self):
 		if self.cache.get('trivia'):
-			#print("Getting cache...")
 			return self.cache['trivia']
 		
 		trivs = self.html.find_all('p')
@@ -771,7 +888,7 @@ class Game:
 		html = BeautifulSoup(requests.get(self.cheatsurl, headers=self.headers, allow_redirects=True).text, 'html5lib')
 		
 
-		cheats = html.find_all('script') # script type="application/ld+json"	
+		cheats = html.find_all('script')
 		for item in cheats:
 
 			if item.get('type') and item.get('type') == 'application/ld+json':
@@ -795,18 +912,16 @@ class Game:
 		res = []
 		en = {}
 		for item in faqs:
-			#print(item.get('href'))
 			if item.get('href') and "/faqs/" in item.get('href'):
 				en['url'] = f"https://gamefaqs.gamespot.com{item.get('href')}"
 			if item.get('href') and "/community/" in item.get('href'):	
 				en['author'] = f"https://gamefaqs.gamespot.com{item.get('href')}"
 				en['author_name'] = item.string	
-				
-			#print(en)
+
 			if en.get('author') and en.get('url'):
 				res.append(FAQ(en))
 				en = {}
-		#print(res)
+
 		self.cache['faqs'] = res
 		return res
 	
@@ -820,7 +935,7 @@ class Game:
 		html = BeautifulSoup(requests.get(self.imagesurl, headers=self.headers, allow_redirects=True).text, 'html5lib')
 		
 		results = {'box': [], 'screens': [], 'unknown': []}
-		images = html.find_all('a') # script type="application/ld+json"	
+		images = html.find_all('a')
 		for item in images:
 			if item.get('href') and "/images/" in item.get('href'):
 				url = item.find('img').get('src')
