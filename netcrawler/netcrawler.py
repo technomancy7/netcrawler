@@ -8,20 +8,28 @@ from html import unescape
 from collections import Counter
 from urllib import parse
 
+USERAGENT = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0"
+
 try:
 	from youtube_dl import YoutubeDL
 	YTDL_ENABLED = True
 except:
 	YTDL_ENABLED = False
 	
+try:
+	import aiohttp
+	AIO_ENABLED = True
+except:
+	AIO_ENABLED = False
+	
+class NetcrawlerError(Exception):
+	pass
+	
 class LinkCrawler:
-	def __init__(self, parser='html5lib', useragent="Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0"):
-		self.payload = {
-			'User-Agent': useragent
-		}
+	def __init__(self, *, parser='html5lib', useragent=USERAGENT):
 		self.parser = parser
-		
 		self.cache = {}
+		
 		self.parsers = {
 			'youtube.com': self._youtubeUnfurler,
 			'imgur.com': self._imgurUnfurler,
@@ -30,7 +38,11 @@ class LinkCrawler:
 			'duckduckgo.com': self._ddgUnfurler,
 			'startpage.com': self._spUnfurler
 		}
-	
+		
+		self.payload = {
+			'User-Agent': useragent
+		}	
+
 	def _ddgUnfurler(self, data):
 		search = ""
 		for item in data.query.split("&"):
@@ -39,7 +51,7 @@ class LinkCrawler:
 
 		if search:
 			return DuckDuckGo().search(search)
-		
+	
 	def _spUnfurler(self, data):
 		search = ""
 		for item in data.query.split("&"):
@@ -48,7 +60,7 @@ class LinkCrawler:
 
 		if search:
 			return Startpage().search(search)
-		
+
 	def _stackUnfurler(self, data):
 		try:
 			_id = data.path.split("/")[2]
@@ -58,7 +70,7 @@ class LinkCrawler:
 			return raw
 		except Exception as e:
 			print(e)
-		
+	
 	def _youtubeUnfurler(self, data):
 		if not YTDL_ENABLED:
 			return {'error': 'Missing library! Youtube_DL is required to extract youtube information.'}
@@ -85,7 +97,7 @@ class LinkCrawler:
 				return filtered
 		else:
 			return {'title': 'YouTube Home'}
-		
+	
 	def _imgurUnfurler(self, data):
 		url = parse.urlunsplit(data)
 		print(url)
@@ -99,7 +111,7 @@ class LinkCrawler:
 			ret['image'] = s.find('link', rel='image_src').get('href')
 			
 		return ret
-	
+
 	def _gistUnfurler(self, data):
 		try:
 			api = "https://api.github.com/gists/:id"
@@ -142,11 +154,164 @@ class LinkCrawler:
 
 		meth = self.parsers.get(loc, self._genericUnfurler)
 		resp = meth(url)
-		if not resp:
-			resp = self._genericUnfurler(url)
+		#if not resp:
+			#resp = self._genericUnfurler(url)
+		self.cache[loc] = resp
+		return resp
+
+class AsyncLinkCrawler(LinkCrawler):
+	def __init__(self, *, parser='html5lib', useragent=USERAGENT):
+
+		if AIO_ENABLED:
+			self._async = _async
+			raise NetcrawlerError("Asyncio networking not available. `aiohttp` library is missing.")
+			return
+			
+		super().__init__(parser=parser, useragent=useragent)
+		
+		self.parsers = {
+			'imgur.com': self._imgurUnfurler_a,
+			'gist.github.com': self._gistUnfurler_a,
+			'stackoverflow.com': self._stackUnfurler_a,
+			'duckduckgo.com': self._ddgUnfurler_a,
+			'startpage.com': self._spUnfurler_a
+		}
+		
+	async def _ddgUnfurler_a(self, data):
+		search = ""
+		for item in data.query.split("&"):
+			if item.startswith("q="):
+				search = item.replace('q=', '')
+
+		if search:
+			return await DuckDuckGoAsync().search(search)
+	
+	async def _spUnfurler_a(self, data):
+		search = ""
+		for item in data.query.split("&"):
+			if item.startswith("query="):
+				search = item.replace('query=', '')
+
+		if search:
+			return await StartpageAsync().search(search)
+
+	async def _stackUnfurler_a(self, data):
+		try:
+			_id = data.path.split("/")[2]
+			site = data.netloc.split(".")[0]
+			url = f"https://api.stackexchange.com/2.2/questions/{_id}?order=desc&sort=activity&site={site}"
+			raw = requests.get(url, headers=self.payload, allow_redirects=True).json()
+			return raw
+		except Exception as e:
+			print(e)
+	
+	async def _imgurUnfurler_a(self, data):
+		url = parse.urlunsplit(data)
+		s = await self.inspect(url)
+		
+		ret = {'title': s.title.text.strip()}
+		if s.find('p') and s.find('p').text:
+			ret['p'] = s.find('p').text.strip()
+		
+		if s.find('link') and s.find('link', rel='image_src'):
+			ret['image'] = s.find('link', rel='image_src').get('href')
+			
+		return ret
+
+	async def _gistUnfurler_a(self, data):
+		try:
+			api = "https://api.github.com/gists/:id"
+			api = api.replace(":id", data.path.split("/")[2])
+			#data = requests.get(api).json()
+			async with aiohttp.ClientSession() as session:
+				async with session.get(api) as r:
+					data = await r.json()
+					gist = data['files'][list(data['files'].keys())[0]]
+					return gist
+		except Exception as e:
+			print(e)
+			
+	async def _genericUnfurler(self, data):
+		url = parse.urlunsplit(data)
+		s = await self.inspect(url)
+		
+		ret = {'title': s.title.text.strip()}
+		if s.find('p') and s.find('p').text:
+			ret['p'] = s.find('p').text.strip()
+			
+		if s.find('span') and s.find('span').text:
+			ret['span'] = s.find('span').text.strip()
+			
+		if s.find('img') and s.find('img').get('src'):
+			ret['image'] = f"{url}{s.find('img').get('src')}"
+			
+		return ret
+	
+	async def inspect(self, url):
+		#self.raw = requests.get(url, headers=self.payload, allow_redirects=True)
+		async with aiohttp.ClientSession() as session:
+			async with session.get(url, headers=self.payload) as r:
+				resp = await r.text()
+				self.parsed = BeautifulSoup(resp, self.parser)		
+				return self.parsed
+	
+	async def unfurl(self, link):	
+		url = parse.urlsplit(link)
+		loc = url.netloc.replace("www.", '')
+		if self.cache.get(loc, None):
+			return self.cache[loc]
+	
+		if len( url.path.split(".") ) > 1 and url.path.split(".")[1] in ['png', 'jpg', 'jpeg', 'gif', 'bmp']:
+			return {'image': link}
+
+		meth = self.parsers.get(loc, self._genericUnfurler)
+		resp = await meth(url)
+		#if not resp:
+			#resp = await self._genericUnfurler(url)
 		self.cache[loc] = resp
 		return resp
 		
+class AtomReader:
+	@staticmethod
+	def parse(url):			
+		data = requests.get(url).text
+		#root = ET.fromstring(data)
+		root = BeautifulSoup(data, 'xml')
+		return root
+		
+	@staticmethod
+	async def async_parse(url):
+		print("not yet implemented")	
+		
+class GoogleTrends:
+	@staticmethod
+	def get():
+		url = "https://trends.google.com/trends/hottrends/atom/feed?pn=p1"
+		return AtomReader.parse(url)		
+
+class IGDB:
+	def __init__(self, token):
+		self.payload = {
+		'user-key': f'{token}'
+		}
+		self.url = "https://api-v3.igdb.com/"
+		#https://api-docs.igdb.com/?shell#game
+		
+	def games(self):
+		payload = {}
+		payload.update(self.payload)
+		
+		resp = requests.post(f"{self.url}games", headers=payload, data='fields age_ratings,aggregated_rating,aggregated_rating_count,alternative_names,artworks,bundles,category,collection,cover,created_at,dlcs,expansions,external_games,first_release_date,follows,franchise,franchises,game_engines,game_modes,genres,hypes,involved_companies,keywords,multiplayer_modes,name,parent_game,platforms,player_perspectives,popularity,pulse_count,rating,rating_count,release_dates,screenshots,similar_games,slug,standalone_expansions,status,storyline,summary,tags,themes,time_to_beat,total_rating,total_rating_count,updated_at,url,version_parent,version_title,videos,websites; search "deus ex";').text
+		return json.loads(resp)	
+		
+	def engines(self):
+		payload = {}
+		payload.update(self.payload)
+		
+		resp = requests.post(f"{self.url}game_engines", headers=payload, data='fields companies,created_at,description,logo,name,platforms,slug,updated_at,url; search "unreal";').text
+		print(resp)
+		return json.loads(resp)	
+
 class IMGUR:
 	def __init__(self, client_id):
 		self.payload = {
@@ -185,11 +350,13 @@ class IMGUR:
 		return choice(items['data'])
 
 class HeadlineSmasher:
-	def __init__(self, agent="Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0"):
+	def __init__(self, *, useragent=USERAGENT):
 		self.url = 'https://www.headlinesmasher.com/headlines/random'
 		self.payload = {
-			'User-Agent': agent
+			'User-Agent': useragent
 		}
+		self._async = _async
+		
 	def getRandom(self):
 		self.raw = requests.get(self.url, headers=self.payload, allow_redirects=True)
 		parsed = BeautifulSoup(self.raw.text, 'html5lib')		
@@ -200,6 +367,7 @@ class HeadlineSmasher:
 				out[item.get('property').split(":")[1]] = item.get('content')
 				
 		return out
+	
 class Uguu:
 	@staticmethod
 	def upload(filepath):
@@ -239,7 +407,7 @@ class Wolfram:
 		return msg['result']
 
 class Youtube:
-	def __init__(self, useragent="Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0"):
+	def __init__(self, useragent=USERAGENT):
 		print("NOT YET FUNCTIONAL")
 		self.useragent = useragent
 		self.cache = {}
@@ -280,7 +448,7 @@ class Youtube:
 		return sorted_data		
 	
 class Startpage:
-	def __init__(self, useragent="Python3-Library"):
+	def __init__(self, *, _async=False, useragent=USERAGENT):
 		self.useragent = useragent
 		self.cache = {}
 		self.image_cache = {}
@@ -524,9 +692,10 @@ class Wiki:
 		self.wikidata = "https://www.wikidata.org/w/api.php?"
 		self.wikipedia = "https://en.wikipedia.org/w/api.php?"
 		self.wikipedia_site = "https://en.wikipedia.org/wiki/"
+		
 	#Raw API call to retrieve entity information
 	def data(self, search):
-		res = json.loads(requests.get(f"{self.wikidata}action=wbsearchentities&format=json&search={urllib.parse.quote(search_term)}&language=en").text)
+		res = json.loads(requests.get(f"{self.wikidata}action=wbsearchentities&format=json&search={urllib.parse.quote(search)}&language=en").text)
 		try:
 			_id = res['search'][0]['id']
 			return self.dataId(_id)
@@ -600,7 +769,7 @@ class Wiki:
 		return types
 	
 class DuckDuckGo:
-	def __init__(self, useragent="Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0"):
+	def __init__(self, *, _async=False, useragent=USERAGENT):
 		self.useragent = useragent
 		self.cache = {}
 		
@@ -697,7 +866,7 @@ class SCP:
 				self.contents.append(item)
 		
 class ReverseImageSearch:
-	def __init__(self, useragent="Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0"):
+	def __init__(self, useragent=USERAGENT):
 		self.useragent = useragent
 	
 	def get(self, img_url, count=0):
@@ -761,10 +930,10 @@ class Gamefaqs:
 	"""Gamefaqs.search("name") -> web scrape 
 	view-source:https://gamefaqs.gamespot.com/search?game=deus+ex
 	-> returns the url ID which is then passed to the parser class for a Game page"""
-	def __init__(self):
+	def __init__(self, *, useragent=USERAGENT):
 		self.base_url = "https://gamefaqs.gamespot.com/search?game="
 		self.headers = {
-		'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0'
+		'User-Agent':useragent
 		}
 		self.cache = {}
 		
@@ -784,22 +953,20 @@ class Gamefaqs:
 					nurl = item.a.get('href')
 					if console:
 						if console == nurl.split("/")[1]:
-							gobj = Game(nurl)
+							gobj = Game(nurl, self.headers)
 							self.cache[game] = gobj
 							return gobj
 					else:
-						gobj = Game(nurl)
+						gobj = Game(nurl, self.headers)
 						self.cache[game] = gobj
 						return gobj
 					
 		raise Exception("No game was found.")
 		
 class Game:
-	def __init__(self, gamepage_url):
+	def __init__(self, gamepage_url, headers):
 		self.url = f"https://gamefaqs.gamespot.com{gamepage_url}"
-		self.headers = {
-		'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0'
-		}
+		self.headers = headers
 
 		self.html = BeautifulSoup(requests.get(self.url, headers=self.headers).text, 'html5lib')
 		self.cache = {}
@@ -919,7 +1086,7 @@ class Game:
 				en['author_name'] = item.string	
 
 			if en.get('author') and en.get('url'):
-				res.append(FAQ(en))
+				res.append(FAQ(en, self.headers))
 				en = {}
 
 		self.cache['faqs'] = res
@@ -953,14 +1120,12 @@ class Game:
 		pass	
 
 class FAQ:
-	def __init__(self, payload):
+	def __init__(self, payload, headers):
 		self.url = payload.get('url')
 		self.author = payload.get('author')
 		self.author_url = payload.get('author_url')
 		self.html = ""
-		self.headers = {
-		'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0'
-		}
+		self.headers = headers
 		
 	def text(self):
 		if self.html:
