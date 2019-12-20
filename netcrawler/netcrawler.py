@@ -277,18 +277,36 @@ class AtomReader:
 		data = requests.get(url).text
 		#root = ET.fromstring(data)
 		root = BeautifulSoup(data, 'xml')
-		return root
+		return Atom(root)
 		
 	@staticmethod
 	async def async_parse(url):
-		print("not yet implemented")	
-		
+		async with aiohttp.ClientSession() as session:
+			async with session.get(api) as r:
+				data = await r.text()
+				root = BeautifulSoup(data, 'xml')
+				return Atom(root)
+
+class Atom:
+	def __init__(self, data):
+		self.data = data
+				
 class GoogleTrends:
 	@staticmethod
 	def get():
 		url = "https://trends.google.com/trends/hottrends/atom/feed?pn=p1"
 		return AtomReader.parse(url)		
 
+class Blogger:
+	def __init__(self, key):
+		self.key = key
+		
+	def get(self, url):
+		return requests.get(f"https://www.googleapis.com/blogger/v3/blogs/byurl?key={self.key}&url={url}").json()	
+	
+	def getPosts(self, url):
+		d = self.get(url)['posts']['selfLink']
+		return requests.get(f"{d}?key={self.key}").json()			
 class IGDB:
 	def __init__(self, token):
 		self.payload = {
