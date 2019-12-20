@@ -325,13 +325,13 @@ class Blogger:
 				
 	async def async_getPosts(self, url=None):
 		url = self.check(url)
-		d = await self.async_get(url)['posts']['selfLink']
+		evt = await self.async_get(url)
+		d = d['posts']['selfLink']
 		async with aiohttp.ClientSession() as session:
 			async with session.get(f"{d}?key={self.key}") as r:
 				data = await r.json()
 				return data
-				
-						
+
 class IGDB:
 	def __init__(self, token):
 		self.payload = {
