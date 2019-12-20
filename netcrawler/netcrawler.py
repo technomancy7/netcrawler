@@ -298,15 +298,40 @@ class GoogleTrends:
 		return AtomReader.parse(url)		
 
 class Blogger:
-	def __init__(self, key):
+	def __init__(self, key, blog=None):
 		self.key = key
+		self.blog = blog
+	
+	def check(self, url=None):
+		if not url and not self.blog:
+			raise ValueError("No value for URL supplied. Must either be passed as a constructor for the Blogger class, or a paramater to get*.")
 		
-	def get(self, url):
+		return url or self.blog
+	def get(self, url=None):
+		url = self.check(url)
 		return requests.get(f"https://www.googleapis.com/blogger/v3/blogs/byurl?key={self.key}&url={url}").json()	
 	
-	def getPosts(self, url):
+	def getPosts(self, url=None):
+		url = self.check(url)
 		d = self.get(url)['posts']['selfLink']
-		return requests.get(f"{d}?key={self.key}").json()			
+		return requests.get(f"{d}?key={self.key}").json()	
+		
+	async def async_get(self, url=None):
+		url = self.check(url)
+		async with aiohttp.ClientSession() as session:
+			async with session.get(f"https://www.googleapis.com/blogger/v3/blogs/byurl?key={self.key}&url={url}") as r:
+				data = await r.json()
+				return data
+				
+	async def async_getPosts(self, url=None):
+		url = self.check(url)
+		d = await self.async_get(url)['posts']['selfLink']
+		async with aiohttp.ClientSession() as session:
+			async with session.get(f"{d}?key={self.key}") as r:
+				data = await r.json()
+				return data
+				
+						
 class IGDB:
 	def __init__(self, token):
 		self.payload = {
