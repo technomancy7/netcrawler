@@ -326,7 +326,7 @@ class Blogger:
 	async def async_getPosts(self, url=None):
 		url = self.check(url)
 		evt = await self.async_get(url)
-		d = d['posts']['selfLink']
+		d = evt['posts']['selfLink']
 		async with aiohttp.ClientSession() as session:
 			async with session.get(f"{d}?key={self.key}") as r:
 				data = await r.json()
