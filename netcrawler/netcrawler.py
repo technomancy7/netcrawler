@@ -770,9 +770,13 @@ class Wiki:
 	
 	#Helper wrapper for .openSearch to quickly get a summary of things.
 	def summarize(self, value):
+		en = self.openSearch(value)
+		print(en)
 		try:
-			return self.openSearch(value)[value]	
+			return en[value.lower()]	
 		except KeyError:
+			if len(en) > 0:
+				return en[choice(en.keys(0))]
 			return {'error': 'Invalid search.'}
 	
 	#Queries wikipedia, returning a list of page summaries.
@@ -794,7 +798,7 @@ class Wiki:
 			url = name
 		
 		print(url)
-		s = BeautifulSoup(requests.get(url).text, 'html5lib')
+		s = BeautifulSoup(requests.get(url, allow_redirects=True).text, 'html5lib')
 		
 		results = s.find_all(['h2', 'p'])
 		
