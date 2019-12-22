@@ -776,7 +776,7 @@ class Wiki:
 			return en[value.lower()]	
 		except KeyError:
 			if len(en) > 0:
-				return en[choice(en.keys(0))]
+				return en[choice(en.keys())]
 			return {'error': 'Invalid search.'}
 	
 	#Queries wikipedia, returning a list of page summaries.
