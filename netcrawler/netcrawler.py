@@ -797,9 +797,27 @@ class Wiki:
 		else:
 			url = name
 		
-		print(url)
+		#print(url)
 		s = BeautifulSoup(requests.get(url, allow_redirects=True).text, 'html5lib')
+		def get_disamb(tag):
+			#print(tag.get('id'))
+			return tag.has_attr('id') and tag.get('id') == 'disambigbox'
+			
+		dis = s.find_all(get_disamb)
 		
+		if dis:
+			#print("DISAMBIGUOUS")
+			a = s.find_all('li')
+			full = []
+			for item in a:
+				if item.find('a') and item.find('a').get('href') and '/wiki/' in item.find('a').get('href') and ":" not in item.find('a').get('href') and item.find('a').get('href') != '/wiki/Main_Page':
+					if item.get('class') and 'selected' in item.get('class'):
+						break
+						
+					full.append(item.text)
+			
+			return {'disambig': full}
+			
 		results = s.find_all(['h2', 'p'])
 		
 		types = {}
@@ -812,7 +830,11 @@ class Wiki:
 					cur_data = []
 					cur = item.text.replace('[edit]', '')
 				else:
-					cur_data.append(item.text.replace('[edit]', ''))
+					body = item.text.replace('[edit]', '')
+					for i in range(0, 25):
+						body = body.replace(f"[{i}]", '')
+					cur_data.append(body)
+					
 		return types
 	
 class DuckDuckGo:
